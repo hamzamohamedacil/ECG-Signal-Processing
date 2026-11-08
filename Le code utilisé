@@ -1,0 +1,49 @@
+# 1. Génération d'un signal ECG simulé (Fréquence d'échantillonnage : 1000 Hz)
+fs = 1000
+time = np.linspace(0, 4, 4 * fs) # 4 secondes d'enregistrement
+
+# Création d'une forme d'onde de battement cardiaque de base (PQRST)
+def ecg_wave(t):
+# Simulation simplifiée d'un complexe QRS (pic électrique du cœur)
+return 1.5 * np.exp(-((t % 0.8 - 0.25) / 0.02)**2) - 0.25 * np.exp(-((t % 0.8 - 0.28) / 0.01)**2)
+
+clean_ecg = ecg_wave(time)
+
+# Ajout de bruit électrique (ex: interférences 50 Hz du réseau électrique)
+noise = 0.3 * np.sin(2 * np.pi * 50 * time)
+noisy_ecg = clean_ecg + noise
+
+# 2. Filtrage du signal (Filtre Moyenne Glissante pour éliminer le bruit haute fréquence)
+window_size = 15
+filtered_ecg = np.convolve(noisy_ecg, np.ones(window_size)/window_size, mode='same')
+
+# 3. Détection des pics 
+threshold = 0.6
+peaks = where_peaks = np.where((filtered_ecg > threshold) &
+(filtered_ecg >= np.roll(filtered_ecg, 1)) &
+(filtered_ecg >= np.roll(filtered_ecg, -1)))[0]
+
+# Calcul du BPM (Battements Par Minute)
+peak_times = time[peaks]
+if len(peak_times) > 1:
+intervals = np.diff(peak_times)
+average_interval = np.mean(intervals)
+bpm = 60 / average_interval
+else:
+bpm = 0
+
+# 4. Affichage des résultats
+plt.figure(figsize=(12, 6))
+plt.plot(time, noisy_ecg, label="Signal Brut Bruité (Entrée Capteur)", color="orange", alpha=0.6)
+plt.plot(time, filtered_ecg, label="Signal Filtré par Logiciel", color="blue", linewidth=2)
+plt.scatter(time[peaks], filtered_ecg[peaks], color="red", marker="X", s=100, label=f"Pics Détectés (Rythme : {bpm:.1f} BPM)")
+
+plt.title("Projet Ingénierie : Traitement Numérique de Signal Électronique (ECG)")
+plt.xlabel("Temps (secondes)")
+plt.ylabel("Tension (V)")
+plt.legend()
+plt.grid(True)
+
+plt.savefig("analyse_ecg.png")
+plt.show()
+
